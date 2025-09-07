@@ -1,0 +1,6 @@
+---
+- name: Install Docker on Kubernetes nodes
+  hosts: k8s_masters:k8s_infra:k8s_app
+  become: true
+  roles:
+    - docker
