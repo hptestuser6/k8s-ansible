@@ -1,0 +1,44 @@
+---
+- name: Manage service on selected servers
+  hosts: "{{ target | default('all') }}"
+  gather_facts: yes
+  become: yes
+
+  vars:
+    # Allowed actions
+    valid_actions: ['start', 'stop', 'restart', 'status']
+
+    # Map Jenkins actions to valid Ansible service states
+    service_state_map:
+      start: started
+      stop: stopped
+      restart: restarted
+
+  tasks:
+    - name: Validate action
+      fail:
+        msg: "Invalid action '{{ action }}'. Must be one of {{ valid_actions }}"
+      when: action not in valid_actions
+
+    - name: Start/Stop/Restart service
+      ansible.builtin.service:
+        name: "{{ service }}"
+        state: "{{ service_state_map[action] }}"
+      when: action in ['start', 'stop', 'restart']
+
+    - name: Show current service status
+      ansible.builtin.command:
+        cmd: "systemctl status {{ service }} --no-pager"
+      register: svc_status
+      changed_when: false
+      ignore_errors: yes
+      when: action == 'status'
+
+    - name: Print service status neatly
+      ansible.builtin.debug:
+        msg: |
+          ===== Service Status for {{ service }} on {{ inventory_hostname }} =====
+          {{ svc_status.stdout }}
+          ====================================================================
+      when: action == 'status'
+
